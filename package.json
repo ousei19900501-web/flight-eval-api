@@ -1,8 +1,0 @@
-{
-  "name": "flight-eval-api",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "vercel-build": "echo 'No build step required'"
-  }
-}
