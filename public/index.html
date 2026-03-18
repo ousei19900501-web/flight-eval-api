@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>航线收益对比评估</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --morandi-pink: #E8B4B8;
+            --morandi-pink-light: #F5D6D8;
+            --morandi-pink-dark: #D4A0A5;
+            --morandi-blue: #7B9CBF;
+            --morandi-blue-light: #A3BDD9;
+            --morandi-blue-dark: #5C7A99;
+            --morandi-cream: #F5F0EB;
+            --morandi-gray: #9B9B9B;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+            background: linear-gradient(135deg, #E8B4B8 0%, #7B9CBF 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        /* 登录遮罩层 */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #E8B4B8 0%, #7B9CBF 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-box h2 {
+            color: #5C7A99;
+            margin-bottom: 20px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 12px 18px;
+            border: 2px solid #E8B4B8;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: #7B9CBF;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #7B9CBF, #5C7A99);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .login-box button:hover {
+            opacity: 0.9;
+        }
+
+        .login-error {
+            color: #e74c3c;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #7B9CBF 0%, #5C7A99 100%);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        /* 标题区域 - 移到最上面 */
+        .title-section {
+            background: var(--morandi-cream);
+            padding: 25px 40px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            border-bottom: 2px solid #E8B4B8;
+        }
+
+        .title-section label {
+            font-weight: 600;
+            color: #5C7A99;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+
+        .title-section input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #E8B4B8;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .title-section input:focus {
+            outline: none;
+            border-color: #7B9CBF;
+        }
+
+        /* 成本设置面板 */
+        .cost-panel {
+            background: linear-gradient(135deg, #F5D6D8 0%, #E8B4B8 100%);
+            padding: 25px 40px;
+        }
+
+        .cost-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .cost-panel h3 {
+            color: #5C7A99;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-add-route {
+            background: linear-gradient(135deg, #7B9CBF 0%, #5C7A99 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-add-route:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(123, 156, 191, 0.4);
+        }
+
+        .cost-routes-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .cost-route-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(255,255,255,0.6);
+            padding: 15px 20px;
+            border-radius: 12px;
+            flex-wrap: wrap;
+        }
+
+        .cost-route-row label {
+            font-weight: 600;
+            color: #5C7A99;
+            min-width: 60px;
+        }
+
+        .cost-route-row select,
+        .cost-route-row input {
+            padding: 10px 12px;
+            border: 2px solid #E8B4B8;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .cost-route-row select {
+            min-width: 80px;
+        }
+
+        .cost-route-row input[type="number"] {
+            width: 120px;
+        }
+
+        .cost-route-row select:focus,
+        .cost-route-row input:focus {
+            outline: none;
+            border-color: #7B9CBF;
+        }
+
+        .cost-route-row .unit {
+            color: #7B9CBF;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .btn-remove-route {
+            background: #E8B4B8;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-remove-route:hover {
+            background: #D4A0A5;
+        }
+
+        .content {
+            padding: 30px 40px;
+        }
+
+        /* 操作按钮 */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7B9CBF 0%, #5C7A99 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(123, 156, 191, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #A3BDD9 0%, #7B9CBF 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(163, 189, 217, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #E8B4B8 0%, #D4A0A5 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(232, 180, 184, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #D4A0A5 0%, #E8B4B8 100%);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+        }
+
+        /* 表格样式 */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            min-width: 1400px;
+        }
+
+        thead tr {
+            background: linear-gradient(135deg, #7B9CBF 0%, #5C7A99 100%);
+        }
+
+        th {
+            padding: 14px 10px;
+            text-align: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            border: none;
+            white-space: nowrap;
+        }
+
+        th:first-child {
+            border-top-left-radius: 12px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 12px;
+        }
+
+        td {
+            padding: 12px 10px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+
+        tbody tr {
+            transition: all 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #F5F0EB;
+        }
+
+        .editable {
+            background: #fffacd !important;
+            cursor: pointer;
+            border: 2px dashed transparent;
+        }
+
+        .editable:hover {
+            border-color: #ffd700;
+        }
+
+        .editable:focus {
+            border-color: #ffd700;
+            background: #fffef0 !important;
+            outline: none;
+        }
+
+        .route-name {
+            font-weight: 600;
+            color: #5C7A99;
+            white-space: nowrap;
+        }
+
+        .number {
+            font-family: 'Consolas', monospace;
+            font-weight: 500;
+        }
+
+        .positive { color: #27ae60; font-weight: 600; }
+        .negative { color: #e74c3c; font-weight: 600; }
+
+        .daily-tag {
+            background: #E8B4B8;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 5px;
+        }
+
+        /* Tooltip 样式 */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #5C7A99;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            z-index: 100;
+            white-space: normal;
+            max-width: 300px;
+            text-align: left;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
+            bottom: calc(100% + 5px);
+        }
+
+        /* 航线类型筛选 */
+        .route-type-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .route-type-filter label {
+            font-weight: 600;
+            color: #5C7A99;
+        }
+
+        .route-type-filter select {
+            padding: 8px 15px;
+            border: 2px solid #E8B4B8;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .route-type-filter select:focus {
+            outline: none;
+            border-color: #7B9CBF;
+        }
+
+        /* 表头筛选按钮 */
+        .header-filter-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            justify-content: center;
+            margin-top: 4px;
+        }
+
+        .filter-btn {
+            font-size: 10px;
+            padding: 2px 6px;
+            border: 1px solid currentColor;
+            border-radius: 10px;
+            background: transparent;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .filter-btn:hover {
+            opacity: 0.8;
+        }
+
+        .filter-btn.active {
+            opacity: 1;
+            background: currentColor;
+            color: white;
+        }
+
+        .filter-btn.domestic {
+            color: #4CAF50;
+        }
+
+        .filter-btn.international {
+            color: #FF9800;
+        }
+
+        /* 下拉筛选 */
+        .filter-select {
+            font-size: 12px;
+            cursor: pointer;
+            background: white;
+            min-width: 60px;
+            white-space: nowrap;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #7B9CBF;
+        }
+
+        /* 行移动按钮 */
+        .move-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .move-btn {
+            background: #E8B4B8;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        .move-btn:hover {
+            background: #D4A0A5;
+        }
+
+        .move-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 航线类型标签 */
+        .route-type-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .route-type-tag.domestic {
+            background: #A8D5BA;
+            color: #2e7d32;
+        }
+
+        .route-type-tag.international {
+            background: #A3BDD9;
+            color: #1565c0;
+        }
+
+        .route-type-tag.editable {
+            background: #fffacd;
+            cursor: pointer;
+            border: 1px dashed #ffd700;
+        }
+
+        /* 组合方案区域 */
+        .combo-section {
+            background: linear-gradient(135deg, #E8F4F8 0%, #D6EAF5 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            border: 2px solid #7B9CBF;
+        }
+
+        .combo-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .combo-section h3 {
+            color: #5C7A99;
+            font-size: 18px;
+        }
+
+        .combo-inputs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .combo-input-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .combo-input-item label {
+            display: block;
+            font-weight: 600;
+            color: #5C7A99;
+            margin-bottom: 8px;
+        }
+
+        .combo-input-item input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #A3BDD9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Consolas', monospace;
+        }
+
+        .combo-input-item input:focus {
+            outline: none;
+            border-color: #7B9CBF;
+        }
+
+        .combo-btn-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .combo-result {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .combo-results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .combo-stat {
+            background: linear-gradient(135deg, #F5F0EB 0%, #E8E0DB 100%);
+            border-radius: 10px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        .combo-stat.highlight {
+            background: linear-gradient(135deg, #A3BDD9 0%, #7B9CBF 100%);
+            color: white;
+        }
+
+        .combo-stat-value { font-size: 24px; font-weight: bold; margin: 8px 0; }
+        .combo-stat-label { font-size: 13px; opacity: 0.9; }
+
+        /* 评估建议区域 */
+        .suggestion-section {
+            background: linear-gradient(135deg, #F5F0EB 0%, #E8E0DB 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            border: 2px solid #E8B4B8;
+        }
+
+        .suggestion-section h3 {
+            color: #5C7A99;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .suggestion-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #E8B4B8;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: 'Microsoft YaHei', sans-serif;
+            resize: vertical;
+            margin-bottom: 20px;
+        }
+
+        .suggestion-input:focus {
+            outline: none;
+            border-color: #7B9CBF;
+        }
+
+        .suggestion-input.disabled {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        .suggestion-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* 历史数据区域 */
+        .history-section {
+            background: linear-gradient(135deg, #E8F4F8 0%, #D6EAF5 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            border: 2px solid #7B9CBF;
+        }
+
+        .history-section h3 {
+            color: #5C7A99;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .history-item {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(123, 156, 191, 0.2);
+        }
+
+        .history-item-title {
+            font-weight: 600;
+            color: #5C7A99;
+        }
+
+        .history-item-date {
+            color: #9B9B9B;
+            font-size: 13px;
+        }
+
+        .history-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* 公式说明 */
+        .formula-panel {
+            background: #F5F0EB;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            border-left: 4px solid #7B9CBF;
+        }
+
+        .formula-panel h4 { color: #5C7A99; margin-bottom: 15px; }
+
+        .formula-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+        }
+
+        .formula-item {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .formula-item strong { color: #5C7A99; }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .container { border-radius: 0; }
+            .header, .title-section, .cost-panel, .content { padding: 20px; }
+            .action-buttons { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+            .cost-route-row { flex-wrap: wrap; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+
+        /* 锁定状态 */
+        .locked {
+            position: relative;
+        }
+
+        .locked::after {
+            content: '🔒 已确认';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #7B9CBF;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录遮罩层 -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <h2>🔐 航线收益评估系统</h2>
+            <p style="color:#666;margin-bottom:20px;">请输入访问密码</p>
+            <input type="password" id="loginPassword" placeholder="请输入密码" onkeypress="if(event.key==='Enter')checkLogin()">
+            <button onclick="checkLogin()">登 录</button>
+            <p class="login-error" id="loginError"></p>
+        </div>
+    </div>
+
+    <script>
+        // 登录验证
+        const CORRECT_PASSWORD = 'shouyi888';
+
+        // 登录验证
+        async function checkLogin() {
+            const input = document.getElementById('loginPassword').value;
+            const errorMsg = document.getElementById('loginError');
+
+            if (input === CORRECT_PASSWORD) {
+                localStorage.setItem('flightEvalLoggedIn', 'true');
+                document.getElementById('loginOverlay').style.display = 'none';
+                // 登录成功后自动从云端加载数据
+                await autoLoadFromCloud();
+            } else {
+                errorMsg.textContent = '密码错误，请重试';
+            }
+        }
+
+        // 自动从云端加载数据
+        async function autoLoadFromCloud() {
+            try {
+                const apiUrl = CLOUD_API_URL + '?password=' + CLOUD_PASSWORD;
+                const response = await fetch(apiUrl, { method: 'GET' });
+                console.log('自动加载响应状态:', response.status);
+
+                // 检查响应状态
+                if (!response.ok) {
+                    console.log('自动加载失败: HTTP ' + response.status);
+                    return;
+                }
+
+                const data = await response.json();
+
+                // 检查是否有错误
+                if (data.error) {
+                    console.log('自动加载失败: ' + data.error);
+                    return;
+                }
+
+                // 检查是否有数据
+                if (!data.historyData || data.historyData.length === 0) {
+                    console.log('云端暂无数据，需要先有人上传数据');
+                    return;
+                }
+
+                if (data && data.historyData) {
+                    const localHistory = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+                    const cloudHistory = data.historyData || [];
+                    const localTitles = new Set(localHistory.map(h => h.title));
+                    const newFromCloud = cloudHistory.filter(h => !localTitles.has(h.title));
+                    const mergedHistory = [...newFromCloud, ...localHistory];
+                    localStorage.setItem('flightEvalHistory', JSON.stringify(mergedHistory));
+                    renderHistory();
+                    console.log('已自动从云端加载数据');
+                }
+
+                // 清空当前输入（避免延续上一次的数据）
+                document.getElementById('evalTitle').value = '';
+                document.getElementById('suggestionInput').value = '';
+            } catch (e) {
+                console.log('自动加载云端数据失败:', e.message);
+                // 即使加载失败也清空标题
+                document.getElementById('evalTitle').value = '';
+                document.getElementById('suggestionInput').value = '';
+                document.getElementById('suggestionInput').value = '';
+            }
+        }
+
+        // 手动从云端刷新数据
+        async function manualSyncFromCloud() {
+            try {
+                const apiUrl = CLOUD_API_URL + '?password=' + CLOUD_PASSWORD;
+                const response = await fetch(apiUrl, { method: 'GET' });
+                console.log('刷新响应状态:', response.status);
+                const data = await response.json();
+                console.log('云端返回数据:', data);
+
+                if (data.error) {
+                    alert('错误: ' + data.error);
+                    return;
+                }
+
+                if (!data.historyData || data.historyData.length === 0) {
+                    alert('云端暂无数据，请先点击"一键保存"上传数据');
+                    return;
+                }
+
+                // 合并历史数据
+                const localHistory = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+                const cloudHistory = data.historyData || [];
+                const localTitles = new Set(localHistory.map(h => h.title));
+                const newFromCloud = cloudHistory.filter(h => !localTitles.has(h.title));
+                const mergedHistory = [...newFromCloud, ...localHistory];
+                localStorage.setItem('flightEvalHistory', JSON.stringify(mergedHistory));
+                renderHistory();
+
+                alert('✅ 已刷新云端数据！\n\n云端有 ' + cloudHistory.length + ' 条记录\n本地新增 ' + newFromCloud.length + ' 条');
+            } catch (e) {
+                alert('刷新失败: ' + e.message);
+            }
+        }
+
+        // 页面加载时检查登录状态
+        window.onload = function() {
+            const isLoggedIn = localStorage.getItem('flightEvalLoggedIn');
+            if (isLoggedIn === 'true') {
+                document.getElementById('loginOverlay').style.display = 'none';
+                autoLoadFromCloud();
+            }
+        };
+    </script>
+    <div class="container" id="mainContainer">
+        <div class="header">
+            <h1>✈️ 航线收益对比评估</h1>
+            <p>Route Revenue Comparison Evaluation</p>
+        </div>
+
+        <!-- 标题区域 - 移到最上面 -->
+        <div class="title-section">
+            <label>评估标题:</label>
+            <input type="text" id="evalTitle" placeholder="请输入评估标题，如：26年暑假日本航线宽体置换评估10MAR26" style="flex:1;">
+            <button class="btn-add-route" style="background:linear-gradient(135deg,#11998e,#38ef7d);" onclick="saveAllData()" title="保存当前所有数据（标题、成本、航班、组合、建议）并自动上传到云端">💾 一键保存</button>
+            <button class="btn-add-route" style="background:linear-gradient(135deg,#f093fb,#f5576c);" onclick="manualSyncFromCloud()" title="从云端手动刷新历史数据">🔄 刷新数据</button>
+            <button class="btn-add-route" style="background:linear-gradient(135deg,#E8B4B8,#D4A0A5);" onclick="document.getElementById('docUpload').click()">📄 上传文档</button>
+            <input type="file" id="docUpload" accept=".txt,.json,.csv,.xlsx,.xls" style="display:none;" onchange="loadFromDoc(this)">
+            <button class="btn-add-route" style="background:linear-gradient(135deg,#7B9CBF,#5C7A99);" onclick="exportData()">📤 导出数据</button>
+            <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(this)">
+        </div>
+
+        <!-- 成本设置面板 -->
+        <div class="cost-panel">
+            <div class="cost-panel-header">
+                <h3>💰 成本设置 (按航线)</h3>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn-add-route" onclick="addCostRoute()">+ 增加航线</button>
+                                    </div>
+            </div>
+            <div class="cost-routes-grid" id="costRoutesGrid">
+                <!-- 成本设置行将通过JS添加 -->
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- 操作按钮 -->
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="addRoute()">
+                    <span>➕</span> 添加航班
+                </button>
+                <button class="btn btn-success" onclick="recalculate()">
+                    <span>🔄</span> 重新计算
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    <span>🗑️</span> 清空数据
+                </button>
+            </div>
+
+            <!-- 评估数据表格 -->
+            <div class="table-wrapper">
+                <table id="routeTable">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>日期段</th>
+                            <th style="min-width:100px;">航线<br><small>去程=回程</small></th>
+                            <th>航线类型</th>
+                            <th>航班号</th>
+                            <th>机型</th>
+                            <th>班期</th>
+                            <th>客座率<br><small>%</small></th>
+                            <th>单段票价<br><small>不含油(元)</small></th>
+                            <th>单段燃油<br><small>(元)</small></th>
+                            <th>往返货运收入<br><small>(元)</small></th>
+                            <th>小时数<br><small>小时</small></th>
+                            <th>小时变动成本<br><small>元/小时</small></th>
+                            <th>小时全成本<br><small>元/小时</small></th>
+                            <th class="tooltip" data-tip="公式: 座位数×客座率×(票价+燃油)×2+货运收入&#10;例: 322×85%×(580+120)×2+15000=314820">往返含油含货收入<br><small>(元)</small></th>
+                            <th class="tooltip" data-tip="公式: 含油含货收入 - 变动成本×小时数&#10;例: 314820-45000×4.2=125820">边际贡献<br><small>(元)</small></th>
+                            <th class="tooltip" data-tip="公式: 含油含货收入 - 全成本×小时数&#10;例: 314820-68000×4.2=29580">利润<br><small>(元)</small></th>
+                            <th class="tooltip" data-tip="公式: 往返含油含货收入÷小时数&#10;例: 314820÷4.2=74957">小时收入<br><small>元/小时</small></th>
+                            <th class="tooltip" data-tip="公式: 利润÷小时数&#10;例: 29580÷4.2=7043">小时利润<br><small>元/小时</small></th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 组合架次方案 -->
+            <div class="combo-section">
+                <div class="combo-section-header">
+                    <h3>📊 架次组合方案对比</h3>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-primary" onclick="addComboInput()">+ 增加组合</button>
+                    </div>
+                </div>
+                <div class="combo-inputs-grid" id="comboInputsContainer">
+                    <div class="combo-input-item">
+                        <label>组合1</label>
+                        <input type="text" class="combo-input" placeholder="如: 1+2+3" value="1+2">
+                    </div>
+                    <div class="combo-input-item">
+                        <label>组合2</label>
+                        <input type="text" class="combo-input" placeholder="如: 1,2,3" value="1+3">
+                    </div>
+                    <div class="combo-input-item">
+                        <label>组合3</label>
+                        <input type="text" class="combo-input" placeholder="如: 1-3" value="2+3">
+                    </div>
+                    <div class="combo-input-item">
+                        <label>组合4</label>
+                        <input type="text" class="combo-input" placeholder="如: 1 2 3" value="1+2+3">
+                    </div>
+                </div>
+                <div class="combo-btn-group">
+                    <button class="btn btn-success" onclick="calculateAllCombos()">计算所有组合</button>
+                </div>
+                <div class="combo-result" id="comboResults">
+                    <div class="combo-results-grid" id="comboResultsGrid">
+                        <!-- 组合结果将通过JS添加 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 评估建议 -->
+            <div class="suggestion-section" id="suggestionSection">
+                <h3>📝 评估建议</h3>
+                <textarea class="suggestion-input" id="suggestionInput" placeholder="请输入评估建议..."></textarea>
+                <div class="suggestion-buttons">
+                    <button class="btn btn-success" id="confirmBtn" onclick="confirmEvaluation()" title="将当前评估保存到历史记录列表，保存后界面将锁定无法修改">✓ 确认评估</button>
+                    <button class="btn btn-warning" id="modifyBtn" onclick="modifyEvaluation()" style="display:none;">✏️ 修改</button>
+                </div>
+            </div>
+
+            <!-- 历史数据 -->
+            <div class="history-section">
+                <h3>📁 历史评估数据</h3>
+                <div style="display:flex;gap:10px;margin-bottom:15px;">
+                    <input type="text" id="historySearch" placeholder="搜索标题..." style="flex:1;padding:10px;border:2px solid #E8B4B8;border-radius:8px;">
+                    <button class="btn btn-primary" onclick="searchHistory()">搜索</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div style="text-align:center;color:#9B9B9B;padding:20px;">暂无历史数据</div>
+                </div>
+            </div>
+
+            <!-- 公式说明 -->
+            <div class="formula-panel">
+                <h4>📐 计算公式说明</h4>
+                <div class="formula-grid">
+                    <div class="formula-item">
+                        <strong>单段可供座位数:</strong> 787=322座, 321A=197座, 321N=197座, 320A=163座, 320N=163座
+                    </div>
+                    <div class="formula-item">
+                        <strong>往返含油含货收入</strong> = 单段可供座位数 × 客座率 × (单段票价 + 单段燃油) × 2 + 往返货运收入
+                    </div>
+                    <div class="formula-item">
+                        <strong>边际贡献</strong> = 往返含油含货收入 - 小时变动成本 × 小时数
+                    </div>
+                    <div class="formula-item">
+                        <strong>利润</strong> = 往返含油含货收入 - 小时全成本 × 小时数
+                    </div>
+                    <div class="formula-item">
+                        <strong>班期非D时:</strong> 边际贡献/利润 = 原值 × (班期天数/7)，如247=3天/7
+                    </div>
+                    <div class="formula-item">
+                        <strong>小时利润</strong> = 利润 ÷ 小时数
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 机型座位数配置
+        const aircraftSeats = { '787': 322, '321A': 197, '321N': 197, '320A': 163, '320N': 163 };
+
+        // 成本设置数据 - 默认3组
+        let costSettings = [
+            { route: '浦东=大阪', aircraft: '787', variableCost: 45000, totalCost: 68000 },
+            { route: '虹桥=东京', aircraft: '320A', variableCost: 42000, totalCost: 65000 },
+            { route: '默认', aircraft: '787', variableCost: 45000, totalCost: 68000 }
+        ];
+
+        // 航班数据
+        let flightData = [
+            { dateRange: '3.10-4.10', no: 'MU1234', route: '浦东=大阪', routeType: '国际', aircraft: '787', schedule: '1357', loadFactor: 85, fare: 580, fuel: 120, cargoRevenue: 15000, hours: 4.2, variableCost: 45000, totalCost: 68000 },
+            { dateRange: '3.10-4.10', no: 'MU5678', route: '浦东=大阪', routeType: '国际', aircraft: '321A', schedule: '246', loadFactor: 90, fare: 520, fuel: 95, cargoRevenue: 12000, hours: 4.2, variableCost: 45000, totalCost: 68000 },
+            { dateRange: '3.10-4.10', no: 'MU9012', route: '虹桥=东京', routeType: '国际', aircraft: '320A', schedule: 'D', loadFactor: 88, fare: 650, fuel: 110, cargoRevenue: 18000, hours: 5.5, variableCost: 42000, totalCost: 65000 },
+            { dateRange: '3.10-4.10', no: 'MU3456', route: '浦东=北京', routeType: '国内', aircraft: '320A', schedule: 'D', loadFactor: 92, fare: 680, fuel: 80, cargoRevenue: 8000, hours: 2.5, variableCost: 38000, totalCost: 55000 }
+        ];
+
+        let isConfirmed = false;
+        let comboInputCount = 4;
+
+        // 格式化数字
+        function formatNumber(num) {
+            return num.toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+        }
+
+        // 获取机型座位数
+        function getAircraftSeats(aircraft) {
+            return aircraftSeats[aircraft] || 200;
+        }
+
+        // 获取航线对应成本
+        function getRouteCost(route) {
+            const setting = costSettings.find(s => s.route === route);
+            return setting || costSettings[costSettings.length - 1];
+        }
+
+        // 计算班期系数 (班期天数/7)
+        function getScheduleFactor(schedule) {
+            if (!schedule || schedule === 'D' || schedule === '每日') {
+                return 1; // 每天航班，系数为1
+            }
+
+            // 解析班期字符串，如 "1357" 表示1,3,5,7共4天
+            const days = schedule.replace(/[^1-7]/g, '').split('').filter(d => d);
+            const uniqueDays = [...new Set(days)];
+            return uniqueDays.length / 7;
+        }
+
+        // 计算往返含油含货收入
+        function calculateTotalRevenue(data) {
+            const seats = getAircraftSeats(data.aircraft);
+            const loadFactor = data.loadFactor / 100;
+            const singleTripRevenue = seats * loadFactor * (data.fare + data.fuel);
+            return singleTripRevenue * 2 + data.cargoRevenue;
+        }
+
+        // 计算各项指标
+        function calculateMetrics(data) {
+            const totalRevenue = calculateTotalRevenue(data);
+            const scheduleFactor = getScheduleFactor(data.schedule);
+
+            const marginalContributionRaw = totalRevenue - data.variableCost * data.hours;
+            const profitRaw = totalRevenue - data.totalCost * data.hours;
+
+            // 非每日航班需要计算日均
+            const marginalContribution = marginalContributionRaw * scheduleFactor;
+            const profit = profitRaw * scheduleFactor;
+
+            const hourlyRevenue = totalRevenue / data.hours;
+            const hourlyProfit = profit / data.hours;
+
+            return {
+                totalRevenue,
+                marginalContributionRaw,
+                profitRaw,
+                marginalContribution,
+                profit,
+                hourlyRevenue,
+                hourlyProfit,
+                scheduleFactor,
+                isDaily: scheduleFactor === 1
+            };
+        }
+
+        // 渲染成本设置
+        function renderCostSettings() {
+            const grid = document.getElementById('costRoutesGrid');
+            grid.innerHTML = '';
+
+            const aircraftOptions = ['787', '321A', '321N', '320A', '320N'];
+
+            costSettings.forEach((setting, index) => {
+                const row = document.createElement('div');
+                row.className = 'cost-route-row fade-in';
+                row.innerHTML = `
+                    <label>航线${index + 1}:</label>
+                    <input type="text" value="${setting.route}" onchange="updateCostRoute(${index}, 'route', this.value)" placeholder="航线名称">
+                    <select onchange="updateCostRoute(${index}, 'aircraft', this.value)">
+                        ${aircraftOptions.map(opt => `<option value="${opt}" ${setting.aircraft === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>
+                    <input type="number" value="${setting.variableCost}" onchange="updateCostRoute(${index}, 'variableCost', this.value)" min="0">
+                    <span class="unit">元/小时(变动)</span>
+                    <input type="number" value="${setting.totalCost}" onchange="updateCostRoute(${index}, 'totalCost', this.value)" min="0">
+                    <span class="unit">元/小时(全成本)</span>
+                    ${costSettings.length > 1 ? `<button class="btn-remove-route" onclick="removeCostRoute(${index})">删除</button>` : ''}
+                `;
+                grid.appendChild(row);
+            });
+        }
+
+        // 添加成本航线
+        function addCostRoute() {
+            costSettings.push({ route: '新航线', aircraft: '787', variableCost: 45000, totalCost: 68000 });
+            renderCostSettings();
+        }
+
+        // 删除成本航线
+        function removeCostRoute(index) {
+            if (confirm('确定删除该航线成本设置?')) {
+                costSettings.splice(index, 1);
+                renderCostSettings();
+            }
+        }
+
+        // 保存成本数据到本地存储
+        function saveCostData() {
+            localStorage.setItem('flightCostSettings', JSON.stringify(costSettings));
+            alert('成本数据已保存!');
+        }
+
+        // 更新成本设置
+        function updateCostRoute(index, field, value) {
+            if (field === 'variableCost' || field === 'totalCost') {
+                costSettings[index][field] = parseFloat(value) || 0;
+            } else {
+                costSettings[index][field] = value;
+            }
+            syncFlightCosts();
+            renderTable();
+        }
+
+        // 同步航班成本
+        function syncFlightCosts() {
+            flightData.forEach(data => {
+                const cost = getRouteCost(data.route);
+                data.variableCost = cost.variableCost;
+                data.totalCost = cost.totalCost;
+                data.aircraft = cost.aircraft;
+            });
+        }
+
+        // 更新航线类型
+        function updateRouteType(index, value) {
+            flightData[index].routeType = value;
+            renderTable();
+        }
+
+        // 更新机型
+        function updateAircraft(index, value) {
+            flightData[index].aircraft = value;
+            renderTable();
+        }
+
+        // 渲染表格
+        function renderTable() {
+            // 自动同步成本模块的设置到航班数据
+            syncFlightCosts();
+
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            // 遍历所有航班数据
+            flightData.forEach((data, index) => {
+                const metrics = calculateMetrics(data);
+                const tr = document.createElement('tr');
+                tr.className = 'fade-in';
+                tr.dataset.originalIndex = flightData.indexOf(data);
+
+                const scheduleTag = !metrics.isDaily ? `<span class="daily-tag">周${metrics.scheduleFactor * 7}天</span>` : '';
+                const routeTypeClass = data.routeType === '国内' ? 'domestic' : 'international';
+
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td class="editable" contenteditable="true" data-field="dateRange" data-index="${index}" style="min-width:80px;">${data.dateRange}</td>
+                    <td class="route-name editable" contenteditable="true" data-field="route" data-index="${index}">${data.route}</td>
+                    <td><select class="filter-select" onchange="updateRouteType(${index}, this.value)" style="padding:4px;border-radius:4px;border:1px solid #ddd;">
+                        <option value="国内" ${data.routeType === '国内' ? 'selected' : ''}>国内</option>
+                        <option value="国际" ${data.routeType === '国际' ? 'selected' : ''}>国际</option>
+                    </select></td>
+                    <td class="editable number" contenteditable="true" data-field="no" data-index="${index}">${data.no}</td>
+                    <td><select class="filter-select" onchange="updateAircraft(${index}, this.value)" style="padding:4px;border-radius:4px;border:1px solid #ddd;">
+                        <option value="787" ${data.aircraft.startsWith('787') ? 'selected' : ''}>787</option>
+                        <option value="321" ${data.aircraft.startsWith('321') ? 'selected' : ''}>321</option>
+                        <option value="320" ${data.aircraft.startsWith('320') ? 'selected' : ''}>320</option>
+                    </select></td>
+                    <td class="editable" contenteditable="true" data-field="schedule" data-index="${index}">${data.schedule}</td>
+                    <td class="editable number" contenteditable="true" data-field="loadFactor" data-index="${index}">${data.loadFactor}</td>
+                    <td class="editable number" contenteditable="true" data-field="fare" data-index="${index}">${data.fare}</td>
+                    <td class="editable number" contenteditable="true" data-field="fuel" data-index="${index}">${data.fuel}</td>
+                    <td class="editable number" contenteditable="true" data-field="cargoRevenue" data-index="${index}">${formatNumber(data.cargoRevenue)}</td>
+                    <td class="editable number" contenteditable="true" data-field="hours" data-index="${index}">${data.hours}</td>
+                    <td class="editable number" contenteditable="true" data-field="variableCost" data-index="${index}">${formatNumber(data.variableCost)}</td>
+                    <td class="editable number" contenteditable="true" data-field="totalCost" data-index="${index}">${formatNumber(data.totalCost)}</td>
+                    <td class="number tooltip" data-tip="${getAircraftSeats(data.aircraft)}×${data.loadFactor}%×(${data.fare}+${data.fuel})×2+${formatNumber(data.cargoRevenue)}=${formatNumber(metrics.totalRevenue)}" style="background:#E8F4F8;font-weight:600;">${formatNumber(metrics.totalRevenue)}</td>
+                    <td class="number tooltip ${metrics.marginalContribution >= 0 ? 'positive' : 'negative'}" data-tip="${formatNumber(metrics.totalRevenue)}-${formatNumber(data.variableCost)}×${data.hours}=${formatNumber(metrics.marginalContribution)}">
+                        ${formatNumber(metrics.marginalContribution)}
+                        ${!metrics.isDaily ? `<span style="font-size:11px;color:#7B9CBF;">(日均)</span>` : ''}
+                    </td>
+                    <td class="number tooltip ${metrics.profit >= 0 ? 'positive' : 'negative'}" data-tip="${formatNumber(metrics.totalRevenue)}-${formatNumber(data.totalCost)}×${data.hours}=${formatNumber(metrics.profit)}">
+                        ${formatNumber(metrics.profit)}
+                        ${!metrics.isDaily ? `<span style="font-size:11px;color:#7B9CBF;">(日均)</span>` : ''}
+                    </td>
+                    <td class="number tooltip" data-tip="${formatNumber(metrics.totalRevenue)}÷${data.hours}=${formatNumber(metrics.hourlyRevenue)}">${formatNumber(metrics.hourlyRevenue)}</td>
+                    <td class="number tooltip ${metrics.hourlyProfit >= 0 ? 'positive' : 'negative'}" data-tip="${formatNumber(metrics.profit)}÷${data.hours}=${formatNumber(metrics.hourlyProfit)}">${formatNumber(metrics.hourlyProfit)}</td>
+                    <td>
+                        <div class="move-buttons">
+                            <button class="move-btn" onclick="moveRow(${index}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button>
+                            <button class="move-btn" onclick="moveRow(${index}, 1)" ${index === flightData.length - 1 ? 'disabled' : ''}>↓</button>
+                        </div>
+                        <button class="btn btn-danger" style="padding:4px 8px;font-size:10px;margin-top:5px;" onclick="deleteRoute(${index})">删除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.editable').forEach(cell => {
+                cell.addEventListener('blur', handleCellEdit);
+                cell.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); cell.blur(); } });
+            });
+
+            calculateAllCombos();
+        }
+
+        // 移动行
+        function moveRow(index, direction) {
+            if (isConfirmed) { alert('已确认的评估不可修改'); return; }
+
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= flightData.length) return;
+
+            // 交换数据
+            const temp = flightData[index];
+            flightData[index] = flightData[newIndex];
+            flightData[newIndex] = temp;
+
+            renderTable();
+        }
+
+        // 处理单元格编辑
+        function handleCellEdit(e) {
+            const field = e.target.dataset.field;
+            const index = parseInt(e.target.dataset.index);
+            let value = e.target.textContent.replace(/,/g, '').trim();
+
+            if (['loadFactor', 'fare', 'fuel', 'cargoRevenue', 'hours', 'variableCost', 'totalCost'].includes(field)) {
+                value = parseFloat(value);
+                if (isNaN(value) || value < 0) { alert('请输入有效的正数'); renderTable(); return; }
+            }
+
+            flightData[index][field] = value;
+
+            if (field === 'route') {
+                const cost = getRouteCost(value);
+                flightData[index].variableCost = cost.variableCost;
+                flightData[index].totalCost = cost.totalCost;
+                flightData[index].aircraft = cost.aircraft;
+            }
+
+            renderTable();
+        }
+
+        // 添加航班
+        function addRoute() {
+            if (isConfirmed) { alert('已确认的评估不可修改'); return; }
+            const defaultCost = costSettings[0] || { aircraft: '787', variableCost: 45000, totalCost: 68000 };
+            flightData.push({
+                dateRange: '3.10-4.10',
+                no: 'MU' + Math.floor(Math.random() * 9000 + 1000),
+                route: defaultCost.route,
+                routeType: '国际',
+                aircraft: defaultCost.aircraft,
+                schedule: 'D', loadFactor: 85, fare: 580, fuel: 120,
+                cargoRevenue: 15000, hours: 4.0,
+                variableCost: defaultCost.variableCost,
+                totalCost: defaultCost.totalCost
+            });
+            renderTable();
+        }
+
+        // 删除航班
+        function deleteRoute(index) {
+            if (isConfirmed) { alert('已确认的评估不可修改'); return; }
+            if (confirm('确定删除这个航班吗？')) {
+                flightData.splice(index, 1);
+                renderTable();
+            }
+        }
+
+        // 重新计算
+        function recalculate() {
+            syncFlightCosts();
+            renderTable();
+        }
+
+        // 保存航线数据
+        function saveFlightData() {
+            localStorage.setItem('flightData', JSON.stringify(flightData));
+            alert('航线数据已保存!');
+        }
+
+        // 清空数据
+        function clearAll() {
+            if (isConfirmed) { alert('已确认的评估不可修改'); return; }
+            if (confirm('确定清空所有航班数据吗？')) {
+                flightData = [];
+                renderTable();
+            }
+        }
+
+        // 解析组合输入
+        function parseComboInput(input) {
+            if (!input.trim()) return [];
+            const normalized = input.replace(/[,+\-]/g, ' ');
+            const parts = normalized.split(/\s+/).filter(p => p.trim());
+            const indices = new Set();
+
+            parts.forEach(part => {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(n => parseInt(n));
+                    if (!isNaN(start) && !isNaN(end)) {
+                        for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
+                            if (i >= 1 && i <= flightData.length) indices.add(i - 1);
+                        }
+                    }
+                } else {
+                    const num = parseInt(part);
+                    if (!isNaN(num) && num >= 1 && num <= flightData.length) indices.add(num - 1);
+                }
+            });
+
+            return Array.from(indices).sort((a, b) => a - b);
+        }
+
+        // 计算单个组合
+        function calculateCombo(indices) {
+            let totalContribution = 0, totalProfit = 0;
+            indices.forEach(i => {
+                const metrics = calculateMetrics(flightData[i]);
+                totalContribution += metrics.marginalContribution;
+                totalProfit += metrics.profit;
+            });
+            return {
+                count: indices.length,
+                totalContribution,
+                totalProfit
+            };
+        }
+
+        // 计算所有组合
+        function calculateAllCombos() {
+            const inputs = document.querySelectorAll('.combo-input');
+            const grid = document.getElementById('comboResultsGrid');
+            grid.innerHTML = '';
+
+            inputs.forEach((input, idx) => {
+                const indices = parseComboInput(input.value);
+                const result = calculateCombo(indices);
+
+                const stat = document.createElement('div');
+                stat.className = 'combo-stat' + (idx === 0 ? ' highlight' : '');
+                stat.innerHTML = `
+                    <div class="combo-stat-label">组合${idx + 1}: ${input.value || '-'}</div>
+                    <div style="margin-top:10px;">
+                        <div style="font-size:13px;color:#666;">边际贡献</div>
+                        <div class="combo-stat-value" style="font-size:22px;">${result.count > 0 ? formatNumber(result.totalContribution) : '--'}</div>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <div style="font-size:13px;color:#666;">利润</div>
+                        <div class="combo-stat-value" style="font-size:22px;">${result.count > 0 ? formatNumber(result.totalProfit) : '--'}</div>
+                    </div>
+                `;
+                grid.appendChild(stat);
+            });
+        }
+
+        // 添加组合输入框
+        function addComboInput() {
+            comboInputCount++;
+            const container = document.getElementById('comboInputsContainer');
+            const item = document.createElement('div');
+            item.className = 'combo-input-item fade-in';
+            item.innerHTML = `
+                <label>组合${comboInputCount}</label>
+                <input type="text" class="combo-input" placeholder="如: 1+2+3">
+            `;
+            container.appendChild(item);
+        }
+
+        // 保存组合方案数据
+        function saveComboData() {
+            const inputs = document.querySelectorAll('.combo-input');
+            const comboValues = Array.from(inputs).map(input => input.value);
+            localStorage.setItem('flightComboData', JSON.stringify(comboValues));
+            alert('组合方案已保存!');
+        }
+
+        // 保存标题
+        function saveTitle() {
+            const title = document.getElementById('evalTitle').value;
+            localStorage.setItem('flightTitle', title);
+            alert('标题已保存!');
+        }
+
+        // 保存评估建议
+        function saveSuggestion() {
+            const suggestion = document.getElementById('suggestionInput').value;
+            localStorage.setItem('flightSuggestion', suggestion);
+            alert('评估建议已保存!');
+        }
+
+        // 确认评估
+        function confirmEvaluation() {
+            const title = document.getElementById('evalTitle').value.trim();
+            if (!title) { alert('请输入评估标题'); return; }
+            if (flightData.length === 0) { alert('请添加航班数据'); return; }
+
+            isConfirmed = true;
+            document.getElementById('suggestionInput').classList.add('disabled');
+            document.getElementById('confirmBtn').style.display = 'none';
+            document.getElementById('modifyBtn').style.display = 'inline-flex';
+            document.getElementById('suggestionSection').classList.add('locked');
+
+            saveToHistory(title);
+            alert('评估已确认保存!');
+        }
+
+        // 修改评估
+        function modifyEvaluation() {
+            if (confirm('确认修改评估? 修改后将重新计算所有数据.')) {
+                isConfirmed = false;
+                document.getElementById('suggestionInput').classList.remove('disabled');
+                document.getElementById('confirmBtn').style.display = 'inline-flex';
+                document.getElementById('modifyBtn').style.display = 'none';
+                document.getElementById('suggestionSection').classList.remove('locked');
+            }
+        }
+
+        // 保存到历史数据
+        function saveToHistory(title) {
+            const historyData = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+            const existingIndex = historyData.findIndex(h => h.title === title);
+
+            const record = {
+                title: title,
+                date: new Date().toLocaleString('zh-CN'),
+                costSettings: costSettings,
+                flightData: flightData,
+                suggestion: document.getElementById('suggestionInput').value
+            };
+
+            if (existingIndex >= 0) {
+                historyData[existingIndex] = record;
+            } else {
+                historyData.unshift(record);
+            }
+
+            localStorage.setItem('flightEvalHistory', JSON.stringify(historyData));
+            renderHistory();
+        }
+
+        // 导出数据到文件
+        function exportData() {
+            const historyData = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+
+            const shareData = {
+                title: document.getElementById('evalTitle').value,
+                costSettings: costSettings,
+                flightData: flightData,
+                suggestion: document.getElementById('suggestionInput').value,
+                historyData: historyData,
+                exportDate: new Date().toLocaleString('zh-CN')
+            };
+
+            const jsonStr = JSON.stringify(shareData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            const fileName = shareData.title || '航线评估数据';
+            a.download = fileName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_') + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('✅ 数据导出成功！\n\n已包含 ' + historyData.length + ' 条历史记录。\n文件已下载，请发送给其他人。\n对方点击"导入数据"选择此文件即可加载。');
+        }
+
+        // ==================== 一键保存功能 ====================
+        // 一键保存所有页面数据
+        // 一键保存（自动上传云端）
+        async function saveAllData() {
+            // 保存标题
+            const title = document.getElementById('evalTitle').value;
+            localStorage.setItem('flightTitle', title);
+
+            // 保存成本设置
+            localStorage.setItem('flightCostSettings', JSON.stringify(costSettings));
+
+            // 保存航班数据
+            localStorage.setItem('flightData', JSON.stringify(flightData));
+
+            // 保存组合方案
+            const comboInputs = document.querySelectorAll('.combo-input');
+            const comboValues = Array.from(comboInputs).map(input => input.value);
+            localStorage.setItem('flightComboData', JSON.stringify(comboValues));
+
+            // 保存评估建议
+            const suggestion = document.getElementById('suggestionInput').value;
+            localStorage.setItem('flightSuggestion', suggestion);
+
+            // 自动上传到云端
+            const historyData = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+            const cloudData = {
+                historyData: historyData,
+                syncTime: new Date().toISOString()
+            };
+
+            try {
+                const apiUrl = CLOUD_API_URL + '?password=' + CLOUD_PASSWORD;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cloudData)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('✅ 数据已保存并同步到云端！');
+                } else {
+                    alert('⚠️ 数据已保存，但云端同步失败: ' + (result.error || ''));
+                }
+            } catch (e) {
+                console.error('云端同步失败:', e);
+                alert('⚠️ 数据已保存到本地，但云端同步失败');
+            }
+        }
+
+        // ==================== 文档上传读取功能 ====================
+        function loadFromDoc(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            // Excel文件处理
+            if (ext === 'xlsx' || ext === 'xls') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+
+                        // 读取第一个sheet
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                        // 解析Excel数据
+                        parseExcelData(jsonData);
+                    } catch (err) {
+                        console.error('Excel读取失败:', err);
+                        alert('Excel文件读取失败');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                input.value = '';
+                return;
+            }
+
+            // 文本文件处理
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+
+                    if (ext === 'json') {
+                        const data = JSON.parse(content);
+                        loadDataFromDoc(data);
+                    } else if (ext === 'txt' || ext === 'csv') {
+                        parseTextData(content, ext);
+                    } else {
+                        alert('不支持的文件格式');
+                    }
+                } catch (err) {
+                    console.error('读取文件失败:', err);
+                    alert('文件读取失败，请检查格式是否正确');
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        // 解析Excel数据
+        function parseExcelData(jsonData) {
+            if (!jsonData || jsonData.length < 2) {
+                alert('Excel文件为空或格式不正确');
+                return;
+            }
+
+            const parsedData = {
+                title: '',
+                costSettings: [],
+                flightData: [],
+                comboData: [],
+                suggestion: ''
+            };
+
+            // 假设第一行是表头
+            const headers = jsonData[0].map(h => h ? h.toString().toLowerCase() : '');
+
+            // 查找相关列
+            const routeCol = headers.findIndex(h => h.includes('航线') || h.includes('route') || h.includes('线路'));
+            const costCol = headers.findIndex(h => h.includes('成本') || h.includes('cost') || h.includes('费用'));
+
+            // 解析数据行
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (!row || row.length === 0) continue;
+
+                const route = routeCol >= 0 ? row[routeCol] : null;
+                if (!route) continue;
+
+                const cost = costCol >= 0 ? parseFloat(row[costCol]) || 0 : 0;
+
+                parsedData.costSettings.push({ route: route.toString(), cost: cost });
+                parsedData.flightData.push({
+                    route: route.toString(),
+                    passengers: 0,
+                    revenue: 0,
+                    cost: cost,
+                    profit: 0
+                });
+            }
+
+            if (parsedData.costSettings.length > 0) {
+                costSettings = parsedData.costSettings;
+                flightData = parsedData.flightData;
+                localStorage.setItem('flightCostSettings', JSON.stringify(costSettings));
+                localStorage.setItem('flightData', JSON.stringify(flightData));
+                renderCostRoutes();
+                renderTable();
+                alert('✅ Excel数据已加载！\n识别到 ' + parsedData.costSettings.length + ' 条航线数据');
+            } else {
+                alert('未能解析出有效数据，请检查Excel格式\n(应包含"航线"和"成本"列)');
+            }
+        }
+
+        // 从解析的数据加载到页面
+        function loadDataFromDoc(data) {
+            // 加载标题
+            if (data.title) {
+                document.getElementById('evalTitle').value = data.title;
+                localStorage.setItem('flightTitle', data.title);
+            }
+
+            // 加载成本设置
+            if (data.costSettings) {
+                costSettings = data.costSettings;
+                localStorage.setItem('flightCostSettings', JSON.stringify(costSettings));
+                renderCostRoutes();
+            }
+
+            // 加载航班数据
+            if (data.flightData) {
+                flightData = data.flightData;
+                localStorage.setItem('flightData', JSON.stringify(flightData));
+                renderTable();
+            }
+
+            // 加载组合方案
+            if (data.comboData) {
+                localStorage.setItem('flightComboData', JSON.stringify(data.comboData));
+                renderComboInputs(data.comboData);
+            }
+
+            // 加载评估建议
+            if (data.suggestion) {
+                document.getElementById('suggestionInput').value = data.suggestion;
+                localStorage.setItem('flightSuggestion', data.suggestion);
+            }
+
+            alert('✅ 文档数据已加载！');
+        }
+
+        // 解析文本格式数据
+        function parseTextData(content, ext) {
+            const lines = content.trim().split('\n');
+            const parsedData = {
+                title: '',
+                costSettings: [],
+                flightData: [],
+                comboData: [],
+                suggestion: ''
+            };
+
+            // 简单解析：假设格式为 航线,成本 或 JSON格式
+            if (ext === 'json') {
+                try {
+                    const data = JSON.parse(content);
+                    loadDataFromDoc(data);
+                    return;
+                } catch (e) {
+                    alert('JSON格式解析失败');
+                    return;
+                }
+            }
+
+            // CSV/TXT格式解析
+            lines.forEach((line, index) => {
+                const parts = line.split(/[,，\t]/);
+                if (parts.length >= 2) {
+                    const route = parts[0].trim();
+                    const cost = parseFloat(parts[1]) || 0;
+                    parsedData.costSettings.push({ route, cost });
+                    parsedData.flightData.push({
+                        route,
+                        passengers: 0,
+                        revenue: 0,
+                        cost: cost,
+                        profit: 0
+                    });
+                }
+            });
+
+            if (parsedData.costSettings.length > 0) {
+                costSettings = parsedData.costSettings;
+                flightData = parsedData.flightData;
+                localStorage.setItem('flightCostSettings', JSON.stringify(costSettings));
+                localStorage.setItem('flightData', JSON.stringify(flightData));
+                renderCostRoutes();
+                renderTable();
+                alert('✅ 文档数据已加载！\n识别到 ' + parsedData.costSettings.length + ' 条航线数据');
+            } else {
+                alert('未能解析出有效数据，请检查文档格式');
+            }
+        }
+
+        // 渲染组合输入框
+        function renderComboInputs(comboValues) {
+            const container = document.getElementById('comboInputsContainer');
+            container.innerHTML = '';
+            comboValues.forEach((value, index) => {
+                const item = document.createElement('div');
+                item.className = 'combo-input-item';
+                item.innerHTML = `
+                    <label>组合${index + 1}</label>
+                    <input type="text" class="combo-input" placeholder="如: 1+2+3" value="${value}">
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // 从文件导入数据
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const shareData = JSON.parse(e.target.result);
+
+                    // 加载数据
+                    document.getElementById('evalTitle').value = shareData.title || '';
+                    document.getElementById('suggestionInput').value = shareData.suggestion || '';
+                    costSettings = shareData.costSettings || [];
+                    flightData = shareData.flightData || [];
+
+                    // 保存到localStorage
+                    localStorage.setItem('flightTitle', shareData.title || '');
+                    localStorage.setItem('flightSuggestion', shareData.suggestion || '');
+                    localStorage.setItem('flightCostSettings', JSON.stringify(costSettings));
+                    localStorage.setItem('flightData', JSON.stringify(flightData));
+
+                    // 导入历史数据
+                    if (shareData.historyData && Array.isArray(shareData.historyData)) {
+                        const localHistory = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+                        const localTitles = new Set(localHistory.map(h => h.title));
+                        const newHistory = shareData.historyData.filter(h => !localTitles.has(h.title));
+                        const mergedHistory = [...newHistory, ...localHistory];
+                        localStorage.setItem('flightEvalHistory', JSON.stringify(mergedHistory));
+                    }
+
+                    // 重新渲染界面
+                    renderCostSettings();
+                    renderTable();
+                    renderHistory();
+
+                    alert('✅ 数据导入成功！\n\n已导入 ' + (shareData.historyData ? shareData.historyData.length : 0) + ' 条历史记录。');
+                } catch (err) {
+                    console.error('导入失败:', err);
+                    alert('导入失败，文件格式不正确。');
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        // ==================== 云同步功能 ====================
+        const CLOUD_API_URL = 'https://flight-eval-api.swwangqian.workers.dev';
+        const CLOUD_PASSWORD = 'shouyi888';
+
+        // 上传到云端
+        async function syncToCloud() {
+            const historyData = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+            if (historyData.length === 0) {
+                alert('请先添加历史数据后再上传');
+                return;
+            }
+            const cloudData = {
+                historyData: historyData,
+                syncTime: new Date().toISOString()
+            };
+
+            try {
+                const apiUrl = CLOUD_API_URL + '?password=' + CLOUD_PASSWORD;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cloudData)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('✅ 已成功同步到云端！\n其他用户点击"从云端加载"即可获取最新数据。');
+                } else {
+                    alert('同步失败: ' + (result.error || '未知错误'));
+                }
+            } catch (e) {
+                console.error('同步错误:', e);
+                alert('同步失败！\n\n错误: ' + e.message + '\n\n可能原因：\n1. Worker 未正确部署\n2. KV 未正确绑定\n3. 网络问题');
+            }
+        }
+
+        // 从云端加载
+        async function loadFromCloud() {
+            if (!confirm('从云端加载将覆盖本地数据，确定要继续吗？')) return;
+
+            try {
+                const apiUrl = CLOUD_API_URL + '?password=' + CLOUD_PASSWORD;
+                const response = await fetch(apiUrl, { method: 'GET' });
+                console.log('GET响应状态:', response.status);
+
+                // 检查HTTP状态
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert('密码错误，请检查密码配置');
+                    } else {
+                        alert('加载失败: HTTP ' + response.status);
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+
+                // 检查是否有错误
+                if (data.error) {
+                    alert('加载失败: ' + data.error);
+                    return;
+                }
+
+                if (data.message || !data.historyData || data.historyData.length === 0) {
+                    alert('云端暂无数据，请先点击"一键保存"上传数据。');
+                    return;
+                }
+
+                // 合并历史数据（去重）
+                const localHistory = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+                const cloudHistory = data.historyData || [];
+                const localTitles = new Set(localHistory.map(h => h.title));
+                const newFromCloud = cloudHistory.filter(h => !localTitles.has(h.title));
+                const mergedHistory = [...newFromCloud, ...localHistory];
+
+                localStorage.setItem('flightEvalHistory', JSON.stringify(mergedHistory));
+                renderHistory();
+
+                alert('✅ 已从云端加载数据！\n\n已同步 ' + cloudHistory.length + ' 条历史记录。');
+            } catch (e) {
+                alert('加载失败，请检查网络连接。\n错误: ' + e.message);
+            }
+        }
+
+        // 渲染历史数据
+        function renderHistory(searchKeyword = '') {
+            const list = document.getElementById('historyList');
+            let historyData = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+
+            // 如果有搜索关键字，则过滤数据
+            if (searchKeyword) {
+                historyData = historyData.filter(record =>
+                    record.title.toLowerCase().includes(searchKeyword.toLowerCase())
+                );
+            }
+
+            if (historyData.length === 0) {
+                list.innerHTML = `<div style="text-align:center;color:#9B9B9B;padding:20px;">${searchKeyword ? '未找到匹配的历史数据' : '暂无历史数据'}</div>`;
+                return;
+            }
+
+            list.innerHTML = '';
+            historyData.forEach((record, index) => {
+                const item = document.createElement('div');
+                item.className = 'history-item fade-in';
+                item.innerHTML = `
+                    <div>
+                        <div class="history-item-title">${record.title}</div>
+                        <div class="history-item-date">${record.date}</div>
+                    </div>
+                    <div class="history-item-actions">
+                        <button class="btn btn-primary" style="padding:8px 15px;font-size:12px;" onclick="loadHistory(${index})">加载</button>
+                        <button class="btn btn-danger" style="padding:8px 15px;font-size:12px;" onclick="deleteHistory(${index})">删除</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // 搜索历史数据
+        function searchHistory() {
+            const keyword = document.getElementById('historySearch').value.trim();
+            renderHistory(keyword);
+        }
+
+        // 加载历史数据
+        function loadHistory(index) {
+            const historyData = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+            const record = historyData[index];
+
+            if (confirm(`加载 "${record.title}"? 当前未保存的数据将丢失.`)) {
+                costSettings = record.costSettings;
+                flightData = record.flightData;
+                document.getElementById('evalTitle').value = record.title;
+                document.getElementById('suggestionInput').value = record.suggestion || '';
+
+                isConfirmed = false;
+                document.getElementById('suggestionInput').classList.remove('disabled');
+                document.getElementById('confirmBtn').style.display = 'inline-flex';
+                document.getElementById('modifyBtn').style.display = 'none';
+                document.getElementById('suggestionSection').classList.remove('locked');
+
+                renderCostSettings();
+                renderTable();
+            }
+        }
+
+        // 删除历史数据
+        function deleteHistory(index) {
+            if (confirm('确定删除该历史记录?')) {
+                const historyData = JSON.parse(localStorage.getItem('flightEvalHistory') || '[]');
+                historyData.splice(index, 1);
+                localStorage.setItem('flightEvalHistory', JSON.stringify(historyData));
+                renderHistory();
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载保存的数据
+            const savedTitle = localStorage.getItem('flightTitle');
+            if (savedTitle) {
+                document.getElementById('evalTitle').value = savedTitle;
+            }
+
+            const savedSuggestion = localStorage.getItem('flightSuggestion');
+            if (savedSuggestion) {
+                document.getElementById('suggestionInput').value = savedSuggestion;
+            }
+
+            const savedCostSettings = localStorage.getItem('flightCostSettings');
+            if (savedCostSettings) {
+                costSettings = JSON.parse(savedCostSettings);
+            }
+
+            const savedFlightData = localStorage.getItem('flightData');
+            if (savedFlightData) {
+                flightData = JSON.parse(savedFlightData);
+            }
+
+            const savedComboData = localStorage.getItem('flightComboData');
+            if (savedComboData) {
+                const comboValues = JSON.parse(savedComboData);
+                const inputs = document.querySelectorAll('.combo-input');
+                comboValues.forEach((val, idx) => {
+                    if (inputs[idx]) inputs[idx].value = val;
+                });
+            }
+
+            // 搜索框回车事件
+            document.getElementById('historySearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchHistory();
+                }
+            });
+
+            renderCostSettings();
+            renderTable();
+            renderHistory();
+        });
+    </script>
+</body>
+</html>
